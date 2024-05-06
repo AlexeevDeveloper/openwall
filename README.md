@@ -15,7 +15,7 @@ bash deploy.sh
 А команду запуска на:
 
 ```bash
-gunicorn wsgi:app --timeout 60
+gunicorn main:app --timeout 60
 ```
 
 После начните деплой. Если возникли вопросы - откройте issue к данному репозиторию с темой "Проблема при деплое на Cloud Apps".
