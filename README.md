@@ -9,7 +9,7 @@
 Измените команду сборки на:
 
 ```bash
-pip3 install -r requirements.txt --break-system-packages
+bash deploy.sh
 ```
 
 А команду запуска на:
