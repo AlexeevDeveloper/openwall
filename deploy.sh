@@ -1,6 +1,6 @@
 #!/bin/bash
 
-pip3 install -r requirements.txt --break-system-packages
+pip3 install -r requirements.txt
 
 python3 create_db.py
 

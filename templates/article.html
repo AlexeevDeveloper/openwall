@@ -214,15 +214,15 @@
 
 <p>Не совсем ошибка, но из-за данного фактора могут возникнуть проблемы. Например, приложение требует создать файл config.ini и туда поместить ключ API какого-нибудь сервиса. Для этого нам потребуется знание скриптового языка BASH. Вот, например, я создаю файл конфига и вношу туда ключ:</p>
 
-<code lang='bash'>
+<source lang='bash'>
 $ echo "KEY=ABCDEF123456" >> config.ini
-</code>
+</source>
 
 <p>Также, если требуется ввести несколько команд, можно использовать следующую конструкцию, разделяя их логическим символом "&&"</p>
 
-<code lang="bash">
+<source lang="bash">
 $ echo "KEY=ABCDEF123456" >> config.ini && npm build run
-</code>
+</source>
 
 <h3>Другие проблемы</h3>
 
@@ -245,13 +245,13 @@ $ echo "KEY=ABCDEF123456" >> config.ini && npm build run
 
 <p>Для его запуска нам потребуется ввести следующие значения при создании или редактировании приложения:</p>
 
-<code lang="bash">
+<source lang="bash">
 # установка зависимостей, команда сборки. Флаг --break-system-packages нужен, чтобы не создавать виртуальное окружение.
 pip3 install -r requirements.txt --break-system-packages
 
 # запуск приложения, команда запуски
 python3 main.py
-</code>
+</source>
 
 <p>К сожалению, доступ к приложениям по SSH и FTP не доступен. Так что вам придется управлять приложением только через личный кабинет на нашем сайте, о других нюансах мы также говорили выше. Поэтому лучше не деплоить высоконагруженные большие проекты через Cloud Apps. Но если вам нужно быстро что-то протестировать - то советуем использовать наш сервис.</p>
 
@@ -273,19 +273,19 @@ python3 main.py
 
 <p>Это и есть та открытая стена, о которой мы говорили в самом начале. Мы будем использовать язык программирования Python и фреймворк Flask.</p>
 
-<p>Если вы хотите сразу опробовать его - перейдите на <a href="">сам сайт</a> или в его <a href="https://github.com/AlexeevDeveloper/openwall">репозиторий</a></p>
+<p>Если вы хотите сразу опробовать его - перейдите на <a href="https://alexeevdeveloper-openwall-f7c7.twc1.net/">сам сайт</a> или в его <a href="https://github.com/AlexeevDeveloper/openwall">репозиторий</a></p>
 
 <p>Итак, допустим вы хотите сделать проект с самого начала. Тогда следуйте дальнейшим шагам для создания базового виртуального окружения. Виртуальное окружение позволит изолировать ваш проект от остальных. Все команды будут указаны для Linux.</p>
 
-<code lang='bash'>
+<source lang='bash'>
 python3 -m venv venv && source venv/bin/activate && pip3 install flask gunicorn flask_sqlalchemy && pip3 freeze > requirements.txt
-</code>
+</source>
 
 <p>Этой командой мы: а) создали виртуальное окружение и активировали его; б) установили зависимости - сам flask и gunicorn для запуска его на сервере; в) "заморозили" зависимости в файле, чтобы после можно было их установить на сервер.</p>
 
 <p>После давайте откроем файл app.py и вставим в него следующий код:</p>
 
-<code lang='python'>
+<source lang='python'>
 # Импорт модулей
 from datetime import datetime
 from flask import Flask, render_template, url_for, request, redirect
@@ -339,31 +339,31 @@ def new_post():
 
 if __name__ == '__main__':
 	app.run(debug=True)
-</code>
+</source>
 
 <p>После вы должны создать файл create_db.py, в котором будет код создания БД:</p>
 
-<code lang="python">
+<source lang="python">
 from app import app, db
 
 with app.app_context():
 	db.create_all()
-</code>
+</source>
 
 <p>Но это еще не конец - нам требуется создать файл main.py. Это будет файл продакшен-сервера, и выглядит он вот так:</p>
 
-<code lang='python'>
+<source lang='python'>
 from app import app
 
 if __name__ == '__main__':
 	app.run(debug=True)
-</code>
+</source>
 
 <p>Не забудьте создать в папке templates файлы HTML-шаблонов. Их можно увидеть в [репозитории](https://github.com/AlexeevDeveloper/openwall).</p>
 
 <p>Выходим на финишную прямую - создаем скрипт для сборки проекта:</p>
 
-<code lang="bash">
+<source lang="bash">
 #!/bin/bash
 
 pip3 install -r requirements.txt --break-system-packages
@@ -371,9 +371,9 @@ pip3 install -r requirements.txt --break-system-packages
 python3 create_db.py
 
 echo "END"
-</code>
+</source>
 
-<p>Здесь мы устаналиваем зависимости и создаем БД.</p>
+<p>Здесь мы устанавливаем зависимости и создаем БД.</p>
 
 <h3>Деплой на Cloud Apps</h3>
 
@@ -383,7 +383,7 @@ echo "END"
 
 <p>После этого в команде сборки указываем bash deploy.sh, а в команде запуска указываем gunicorn main:app --timeout 60.</p>
 
-<p>Готово! Можете перейти на <a href="">сайт</a> и протестировать нашу небольшую публичную стену!</p>
+<p>Готово! Можете перейти на <a href="https://alexeevdeveloper-openwall-f7c7.twc1.net/">сайт</a> и протестировать нашу небольшую публичную стену!</p>
 
 <img src="https://habrastorage.org/webt/0b/jp/ad/0bjpadljmhpqd7_okn9vyyi5h-m.png" alt="">
 
