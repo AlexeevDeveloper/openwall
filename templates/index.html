@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block content %}
+	{% for post in posts %}
+			<div class="posts">
+				<div class="post">
+					<div class="header">
+						<h2>{{ post.title }}</h2>
+					</div>
+					<p>
+						{{ post.content }}
+					</p>
+					<p>Сообщение создано {{ post.created_on }}</p>
+				</div>
+			</div>
+	{% endfor %}
+{% endblock %}

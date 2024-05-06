@@ -1,2 +1,21 @@
 # openwall
-Простая общественная стена на Flask для примера работы Timeweb Cloud Apps
+Простая общественная стена на Flask для примера работы Timeweb Cloud Apps. [Ссылка на статью](https://habr.com/ru/companies/timeweb/articles/812413/)
+
+## Установка на Timeweb Cloud Apps
+Вам нужно будет зарегистрироваться на [Timeweb Cloud](https://timeweb.cloud/services/vds-vps).
+
+После перейдите в раздел приложения и выберите бекенд на Python, фреймворк flask.
+
+Измените команду сборки на:
+
+```bash
+pip3 install -r requirements.txt --break-system-packages
+```
+
+А команду запуска на:
+
+```bash
+gunicorn wsgi:app --timeout 60
+```
+
+После начните деплой. Если возникли вопросы - откройте issue к данному репозиторию с темой "Проблема при деплое на Cloud Apps".
