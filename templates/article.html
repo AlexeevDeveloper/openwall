@@ -269,7 +269,7 @@ python3 main.py
 
 <p>Увидеть этот сайт вы можете по <a href="https://qibro-simple-nodejs-api-d648.twc1.net/">ссылке</a>.</p>
 
-<h2>Пример создания приложения #1 - Бекенд</h2>
+<h2>Пример создания приложения #2 - Бекенд</h2>
 
 <p>Это и есть та открытая стена, о которой мы говорили в самом начале. Мы будем использовать язык программирования Python и фреймворк Flask.</p>
 
@@ -286,8 +286,104 @@ python3 -m venv venv && source venv/bin/activate && pip3 install flask gunicorn 
 <p>После давайте откроем файл app.py и вставим в него следующий код:</p>
 
 <code lang='python'>
-	
+# Импорт модулей
+from datetime import datetime
+from flask import Flask, render_template, url_for, request, redirect
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import desc
+
+# Создание БД и приложения
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///wall.db'
+app.config['SECRET_KEY'] = 'habr'
+db = SQLAlchemy(app)
+
+
+# Модель поста для БД
+class Post(db.Model):
+	__tablename__ = 'posts'
+	id = db.Column(db.Integer(), primary_key=True)
+	title = db.Column(db.String(255), nullable=False)
+	content = db.Column(db.Text(), nullable=False)
+	created_on = db.Column(db.DateTime(), default=datetime.utcnow)
+
+	def __repr__(self):
+		return "<{}:{}>".format(self.id,  self.title[:10])
+
+
+@app.route('/')
+@app.route('/index')
+def index():
+	posts = Post.query.order_by(desc(Post.created_on)).all() 	# получаем посты и сортируем по дате создания
+
+	return render_template('index.html', posts=posts)
+
+
+@app.route('/new', methods=['GET', 'POST'])
+def new_post():
+	# Создание нового поста 
+	if request.method == 'POST':
+		title = request.form['title']
+		content =  request.form['content']
+
+		if len(title) > 0 and len(content) > 0:
+			post = Post(title=title, content=content)
+			db.session.add(post)
+			db.session.commit()
+			return redirect('index')
+		else:
+			return render_template('newpost.html')
+
+	return render_template('newpost.html')
+
+
+if __name__ == '__main__':
+	app.run(debug=True)
 </code>
+
+<p>После вы должны создать файл create_db.py, в котором будет код создания БД:</p>
+
+<code lang="python">
+from app import app, db
+
+with app.app_context():
+	db.create_all()
+</code>
+
+<p>Но это еще не конец - нам требуется создать файл main.py. Это будет файл продакшен-сервера, и выглядит он вот так:</p>
+
+<code lang='python'>
+from app import app
+
+if __name__ == '__main__':
+	app.run(debug=True)
+</code>
+
+<p>Не забудьте создать в папке templates файлы HTML-шаблонов. Их можно увидеть в [репозитории](https://github.com/AlexeevDeveloper/openwall).</p>
+
+<p>Выходим на финишную прямую - создаем скрипт для сборки проекта:</p>
+
+<code lang="bash">
+#!/bin/bash
+
+python3 -m venv venv
+source venv/bin/activate
+pip3 install -r requirements.txt
+
+python3 create_db.py
+
+echo "END"
+</code>
+
+<p>Здесь мы создаем виртуальное окружение, устаналиваем зависимости и создаем БД.</p>
+
+<h3>Деплой на Cloud Apps</h3>
+
+<p>Займемся переносом приложения на Cloud Apps. Укажите URL вашего GIT-репозитория, в этом примере - наш сайт.</p>
+
+<img src="https://habrastorage.org/webt/bg/xy/tx/bgxytxuxv2mswcpp7jxw0m8nfdi.png" alt="">
+
+<p></p>
 
 <h2>Заключение</h2>
 
