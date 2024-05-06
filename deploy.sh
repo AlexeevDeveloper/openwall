@@ -1,8 +1,6 @@
 #!/bin/bash
 
-python3 -m venv venv
-source venv/bin/activate
-pip3 install -r requirements.txt
+pip3 install -r requirements.txt --break-system-packages
 
 python3 create_db.py
 
