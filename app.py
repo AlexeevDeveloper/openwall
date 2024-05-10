@@ -142,7 +142,7 @@ def new_post():
 				db.session.add(post)
 				db.session.commit()
 			except Exception as e:
-				flash(f'Вознилка ошибка при записи в базу данных: {e}')
+				flash(f'Возникла ошибка при записи в базу данных: {e}')
 			else:
 				return redirect('index')
 		else:
