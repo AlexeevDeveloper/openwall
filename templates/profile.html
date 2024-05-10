@@ -1,7 +1,13 @@
 {% extends 'base.html' %}
 
 {% block content %}
+	<h2>Пользователь: {{ username }}</h2>
+	{% if current_user.username == username %}
+		<a href="/logout">Выйти из аккаунта</a>
+	{% endif %}
+	<h3 style='text-align: center;'>Посты</h3>
 	{% for post in posts %}
+		{% if post.author == username %}
 			<div class="posts">
 				<div class="post">
 					<div class="header">
@@ -11,9 +17,10 @@
 						{{ post.content }}
 					</p>
 					<hr>
-					<p><a href="/profile/{{ post.author }}">Автор: {{ post.author }}</a></p>
 					<p>Дата: {{ post.created_on }}</p>
 				</div>
 			</div>
+		{% endif %}
 	{% endfor %}
 {% endblock %}
+

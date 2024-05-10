@@ -4,18 +4,20 @@
 	<h2>Создание статьи</h2>
 
 	<form method="POST">
+
 		{% for msg in get_flashed_messages() %}
 			<div class="error">
 				<p>{{ msg }}</p>
 			</div>
 		{% endfor %}
 
-		<p>Введите заголовок статьи</p>
-		<input type="text" name='title' placeholder="Заголовок"><br>
-		<p>Введите текст статьи</p>
-		<textarea name="content" id=""></textarea>
+		<p>Введите имя пользователя:</p>
+		<input type="text" name='username' placeholder="Имя пользователя"><br>
+		<p>Введите пароль:</p>
+		<input type="password" name='password' placeholder="Пароль"><br>
 		<br>
 		<input type="submit" class='btn'>
 		<br>
 	</form>
 {% endblock %}
+

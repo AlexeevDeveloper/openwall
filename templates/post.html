@@ -1,0 +1,255 @@
+<p>Привет, хабр! Думаю у многих возникала усталость от бесконечного конфигурирования серверов или постоянной монотонной рутины - подключился на сервер, клонировал репозиторий, установил, отключился. И так по кругу.</p>
+
+<p>Или просто появлялась банальная лень - хотелось бы просто указать репозиторий, указать команды для сборки, и чтобы все сделали за тебя... Желательно чтобы и недорого, и с логами, и с поддержкой нескольких языков программирования и фреймворков. И Docker-контейнеры, и бекенд, и фронтенд.</p>
+
+<p>Есть Netlify, Vercel - но их использование, из-за геополитического конфликта, в России ограничено.</p>
+
+<p>И это возникло также со мной - когда я изучал фреймворк Flask. Я решил создать небольшое веб-приложение - Open Wall, открытую публичную стену. Это максимально простое приложение, которое даст вам базовые знания о фреймворке flask и его расширениях - Flask SQLAlchemy и Flask-Login.</p>
+
+<p>По моему концепту, Open Wall будет состоять из следующего функционала:</p>
+
+<ul>
+	<li>Регистрация пользователя</li>
+	<li>Авторизация пользователя</li>
+	<li>Создание постов на общей стене</li>
+	<li>Профили пользователей</li>
+</ul>
+
+<p>Open Wall будет иметь базовый функционал.</p>
+
+<p>Если вы хотите сразу опробовать его - перейдите на <a href="https://alexeevdeveloper-openwall-f7c7.twc1.net/">сам сайт</a> или в его <a href="https://github.com/AlexeevDeveloper/openwall">репозиторий</a></p>
+
+<p>Итак, допустим вы хотите сделать проект с самого начала. Тогда следуйте дальнейшим шагам для создания базового виртуального окружения. Виртуальное окружение позволит изолировать ваш проект от остальных. Все команды будут указаны для Linux.</p>
+
+<source lang='bash'>
+python3 -m venv venv && source venv/bin/activate && pip3 install flask gunicorn flask_login flask_sqlalchemy && pip3 freeze > requirements.txt
+</source>
+
+<p>Этой командой мы: а) создали виртуальное окружение и активировали его; б) установили зависимости - сам flask и gunicorn для запуска его на сервере; в) "заморозили" зависимости в файле, чтобы после можно было их установить на сервер.</p>
+
+<p>Итак, давайте напишем само приложение:</p>
+
+<source lang="python">
+from flask import Flask, render_template
+
+app = Flask(__name__)
+
+
+@app.route('/')
+def index():
+	return render_template('index.html')
+
+
+if __name__ == '__main__':
+	app.run(debug=True)
+</source>
+
+<p>Давайте разберем каждую строчку:</p>
+
+<ul>
+	<li>from flask import Flask, render_template. Этой командой мы импортировали приложение Flask и функцию для рендера Jinja2-шаблона. О шаблонах поговорим позже</li>
+	<li>app = Flask(__name__). Создаем приложение.</li>
+	<li>@app.route('/'). Это декоратор для рендера пути сайта - в данном случае это корень, /. Дальше идет функция, где мы возращаем шаблон.</li>
+	<li>if __name__ == '__main__'. Это специальная строка, которая позволяет выполнять код, если скрипт исполняется напрямую (не импортируется).</li>
+	<li>app.run(debug=True). Запускаем приложение с включенным дебагом. Также можно задать host, port.</li>
+</ul>
+
+<h2>Шаблоны</h2>
+
+<p>В Flask используется шаблонизатор Jinja. Это быстрая программа, которая позволяет создавать HTML-шаблоны. Вот как выглядит базовый шаблон base.html:</p>
+
+<source lang='html'>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Document</title>
+</head>
+<body>
+	{% block content %}
+	{% endblock %}
+</body>
+</html>
+</source>
+
+<p>Здесь вы можете увидеть фигурные скобки с процентами - они используются если нужны какие-то функции, например цикл for:</p>
+
+<source>
+{% for item in items %}
+	<p>{{ item }}</p>
+{% endfor %}
+</source>
+
+<p>Также есть просто двойные фигурные скобки - они нужны, например, для переменных.</p>
+
+<h2>База данных и авторизация</h2>
+
+<p>Flask - это микрофреймворк, поэтому база данных может быть любая, даже просто встроенный модуль sqlite3. Но мы будем использовать специальное расширение - Flask SQLAlchemy. Это ORM модуль, с возможностью подключения различных БД - от sqlite до MySQL. Мы будем использовать sqlite.</p>
+
+<p>Вот пример модели пользователя для БД:</p>
+
+<source>
+from datetime import datetime
+from flask import Flask, render_template, url_for, request, redirect, flash, get_flashed_messages
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, current_user, login_user, logout_user, login_required
+from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy import desc
+
+app = Flask(__name__)
+login = LoginManager(app)
+login.login_view = 'login'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///wall.db'
+app.config['SECRET_KEY'] = 'fc186fd3-3ace-46c8-8031-a819ec7d9a0e'
+db = SQLAlchemy(app)
+
+@login.user_loader
+def load_user(id):
+	return db.session.get(User, int(id))
+
+
+@app.route('/logout')
+def logout():
+    logout_user()
+    return redirect(url_for('index'))
+
+
+class Post(db.Model):
+	__tablename__ = 'posts'
+	id = db.Column(db.Integer(), primary_key=True)
+	title = db.Column(db.String(256), nullable=False)
+	content = db.Column(db.Text(), nullable=False)
+	created_on = db.Column(db.DateTime(), default=datetime.utcnow)
+	author = db.Column(db.Integer(), nullable=False)
+
+	def __repr__(self):
+		return "<{}:{}>".format(self.id,  self.title[:10])
+
+
+class User(UserMixin, db.Model):
+	id = db.Column(db.Integer, primary_key=True)
+	username = db.Column(db.String(64), index=True, unique=True)
+	password_hash = db.Column(db.String(128))
+
+	def set_password(self, password):
+		self.password_hash = generate_password_hash(password)
+
+	def check_password(self, password):
+		return check_password_hash(self.password_hash, password)
+
+	def __repr__(self):
+		return '<{}:{}>'.format(self.id, self.username[:10])
+</source>
+
+<p>Давайте разберем код подробнее:</p>
+
+<ul>
+	<li>Мы импортируем модуль datetime - для взаимодействия с датой и временем в БД.</li>
+	<li>Мы импортируем из модуля Flask некоторые классы и функции - Flask, render_template, url_for (создание URL для сайта), request - получаем информацию о запросе, нужно при создании форм, redirect - редирект на URL на сайте, flash - создание быстрых flash-сообщений (например о том, что пароль при входе в аккаунт неверный), get_flashed_messages - получаем flash-сообщения, чаще всего используется в шаблоне.</li>
+	<li>Импортируем из модуля flask_login классы и функции для входа и регистрации. Flask Login - это расширение, которое упрощает разработчику создание методов входа и регистрации. Мы импортируем LoginManager - менеджер входами, UserMixin - специальный класс, который мы наследуем для модели пользователя, чтобы можно было работать с текущим пользователем, current_user - при помощи него мы сможем использовать данные текущего пользователя, например его ID, или просто проверить, вошел ли юзер в свой аккаунт. login_user позволяет авторизовать пользователя, logout_user - функция выхода из аккаунта и login_required - декоратор для создания страниц, для которых требуется логин</li>
+	<li>Следующий шаг - импорт модуля Werkzeug, а точнее двух функций - generate_password_hash и check_password_hash. В любых БД пароли хранят в хешированном виде, а иногда даже с солью - случайным набором букв, ибо если взломают БД, то злоумышленники могут увидеть пароли. А хешированные пароли тяжело взломать - особенно если используются новые безопасные алгоритмы. Можно конечно найти коллизию - это когда хеш одной фразы и хеш другой совпадают, но фразы разные. Но найти коллизии очень трудно, практически невыполнимо</li>
+	from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy import desc
+
+</ul>
+from flask import Flask, render_template, url_for, request, redirect, flash, get_flashed_messages
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, current_user, login_user, logout_user, login_required
+from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy import desc
+
+
+<p>Давайте допишем наш код:</p>
+
+<source>
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+	if current_user.is_authenticated:
+		return redirect(url_for('index'))
+	
+	if request.method == 'POST':
+		user = db.session.query(User).filter(User.username == request.form['username']).first()
+
+		if not user.check_password(request.form['password']):
+			flash('Пароль неверный')
+			return render_template('login.html')
+
+		if user is not None:
+			login_user(user)
+			return redirect(url_for('index'))
+		else:
+			flash('Пользователя не существует. Проверьте имя пользователя или пароль.')
+
+	return render_template('login.html')
+
+
+@app.route('/profile/<username>')
+def profile(username: str):
+	posts = db.session.query(Post).filter(Post.author == username).order_by(desc(Post.created_on)).all()
+
+	return render_template('profile.html', username=username, posts=posts)
+
+
+@app.route('/reg', methods=['GET', 'POST'])
+def reg():
+	if current_user.is_authenticated:
+		return redirect(url_for('index'))
+
+	if request.method == 'POST':
+		username = request.form['username']
+		password = request.form['password']
+		password2 = request.form['password2']
+
+		if password != password2:
+			flash('Пароли не совпадают')
+			return render_template('reg.html')
+
+		try:
+			user = User(username=username)
+			user.set_password(password)
+			db.session.add(user)
+			db.session.commit()
+		except Exception as e:
+			flash(f'Ошибка при создании пользователя: {e}')
+			return render_template('reg.html')
+		else:
+			login_user(user)
+			return redirect('index')
+
+	return render_template('reg.html')
+
+
+@app.route('/')
+@app.route('/index')
+def index():
+	posts = Post.query.order_by(desc(Post.created_on)).all()
+
+	return render_template('index.html', posts=posts)
+
+
+@login_required
+@app.route('/new', methods=['GET', 'POST'])
+def new_post():
+	if not current_user.is_authenticated:
+		return redirect('login')
+
+	if request.method == 'POST':
+		title = request.form['title']
+		content =  request.form['content']
+
+		if len(title) > 0 and len(content) > 0:
+			post = Post(title=title, content=content, author=current_user.username)
+			db.session.add(post)
+			db.session.commit()
+			return redirect('index')
+		else:
+			return render_template('newpost.html')
+
+	return render_template('newpost.html')
+
+
+if __name__ == '__main__':
+	app.run(debug=True, port=5000)
+
+</source>

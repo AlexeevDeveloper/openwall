@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block content %}
+	<h2>Создание статьи</h2>
+
+	<form method="POST">
+
+		{% for msg in get_flashed_messages() %}
+			<div class="error">
+				<p>{{ msg }}</p>
+			</div>
+		{% endfor %}
+
+		<p>Введите имя пользователя:</p>
+		<input type="text" name='username' placeholder="Имя пользователя"><br>
+		<p>Введите пароль:</p>
+		<input type="password" name='password' placeholder="Пароль"><br>
+		<p>Повторите пароль:</p>
+		<input type="password" name='password2' placeholder="Повторите пароль"><br>
+		<br>
+		<input type="submit" class='btn'>
+		<br>
+	</form>
+{% endblock %}

@@ -388,7 +388,7 @@ a:hover {
 .post {
 	margin: 5px;
 	padding: 5px;
-	border: 1px solid #37414b;
+	border: 2px solid #37414b;
 }
 
 .post .header h2 {
@@ -421,4 +421,11 @@ textarea {
 
 .btn:hover {
 	background: #8ccf7e;
+}
+
+.error {
+  padding: 10px;
+  background: #e57474;
+  border: 1px solid red;
+  color: black;
 }
