@@ -100,11 +100,11 @@ def login():
 	if request.method == 'POST':
 		user = db.session.query(User).filter(User.username == request.form['username']).first()
 
-		if not user.check_password(request.form['password']):
-			flash('Пароль неверный')
-			return render_template('login.html')
-
 		if user is not None:
+			if not user.check_password(request.form['password']):
+				flash('Пароль неверный')
+				return render_template('login.html')
+
 			login_user(user)
 			return redirect(url_for('index'))
 		else:
@@ -115,6 +115,11 @@ def login():
 
 @app.route('/profile/<username>')
 def profile(username: str):
+	user = db.session.query(User).filter(User.username == username).first()
+
+	if user is None:
+		return redirect('index')
+
 	posts = db.session.query(Post).filter(Post.author == username).order_by(desc(Post.created_on)).all()
 
 	return render_template('profile.html', username=username, posts=posts)

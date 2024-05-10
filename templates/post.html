@@ -27,6 +27,14 @@ python3 -m venv venv && source venv/bin/activate && pip3 install flask gunicorn 
 
 <p>Этой командой мы: а) создали виртуальное окружение и активировали его; б) установили зависимости - сам flask и gunicorn для запуска его на сервере; в) "заморозили" зависимости в файле, чтобы после можно было их установить на сервер.</p>
 
+<p>После создаем базовую архитектуру:</p>
+
+<ul>
+	<p>Создайте директорию templates, там будут храниться шаблоны.</p>
+	<p>Создайте директорию static/css. static - это специальная директория для хранения статичных файлов, например style.css в папке css.</p>
+	<p>Создайте главный файл приложения - app.py, где мы будем писать код.</p>
+</ul>
+
 <p>Итак, давайте напишем само приложение:</p>
 
 <source lang="python">
@@ -104,6 +112,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///wall.db'
 app.config['SECRET_KEY'] = 'fc186fd3-3ace-46c8-8031-a819ec7d9a0e'
 db = SQLAlchemy(app)
 
+
 @login.user_loader
 def load_user(id):
 	return db.session.get(User, int(id))
@@ -118,7 +127,7 @@ def logout():
 class Post(db.Model):
 	__tablename__ = 'posts'
 	id = db.Column(db.Integer(), primary_key=True)
-	title = db.Column(db.String(256), nullable=False)
+	title = db.Column(db.String(255), nullable=False)
 	content = db.Column(db.Text(), nullable=False)
 	created_on = db.Column(db.DateTime(), default=datetime.utcnow)
 	author = db.Column(db.Integer(), nullable=False)
@@ -129,8 +138,8 @@ class Post(db.Model):
 
 class User(UserMixin, db.Model):
 	id = db.Column(db.Integer, primary_key=True)
-	username = db.Column(db.String(64), index=True, unique=True)
-	password_hash = db.Column(db.String(128))
+	username = db.Column(db.String(63), index=True, unique=True)
+	password_hash = db.Column(db.String(127))
 
 	def set_password(self, password):
 		self.password_hash = generate_password_hash(password)
@@ -148,49 +157,155 @@ class User(UserMixin, db.Model):
 	<li>Мы импортируем модуль datetime - для взаимодействия с датой и временем в БД.</li>
 	<li>Мы импортируем из модуля Flask некоторые классы и функции - Flask, render_template, url_for (создание URL для сайта), request - получаем информацию о запросе, нужно при создании форм, redirect - редирект на URL на сайте, flash - создание быстрых flash-сообщений (например о том, что пароль при входе в аккаунт неверный), get_flashed_messages - получаем flash-сообщения, чаще всего используется в шаблоне.</li>
 	<li>Импортируем из модуля flask_login классы и функции для входа и регистрации. Flask Login - это расширение, которое упрощает разработчику создание методов входа и регистрации. Мы импортируем LoginManager - менеджер входами, UserMixin - специальный класс, который мы наследуем для модели пользователя, чтобы можно было работать с текущим пользователем, current_user - при помощи него мы сможем использовать данные текущего пользователя, например его ID, или просто проверить, вошел ли юзер в свой аккаунт. login_user позволяет авторизовать пользователя, logout_user - функция выхода из аккаунта и login_required - декоратор для создания страниц, для которых требуется логин</li>
-	<li>Следующий шаг - импорт модуля Werkzeug, а точнее двух функций - generate_password_hash и check_password_hash. В любых БД пароли хранят в хешированном виде, а иногда даже с солью - случайным набором букв, ибо если взломают БД, то злоумышленники могут увидеть пароли. А хешированные пароли тяжело взломать - особенно если используются новые безопасные алгоритмы. Можно конечно найти коллизию - это когда хеш одной фразы и хеш другой совпадают, но фразы разные. Но найти коллизии очень трудно, практически невыполнимо</li>
-	from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy import desc
-
+	<li>Следующий шаг - импорт модуля Werkzeug, а точнее двух функций - generate_password_hash и check_password_hash. В любых БД пароли хранят в хешированном виде, а иногда даже с солью - случайным набором букв, ибо если взломают БД, то злоумышленники могут увидеть пароли. А хешированные пароли тяжело взломать - особенно если используются новые безопасные алгоритмы. Можно конечно найти коллизию - это когда хеш одной фразы и хеш другой совпадают, но фразы разные. Но найти коллизии очень трудно, практически невыполнимо.</li>
+	<li>И последний импорт - это desc из sqlalchemy. Простая функция, которая нам нужна, когда мы будем сортировать посты по времени создания.</li>
 </ul>
-from flask import Flask, render_template, url_for, request, redirect, flash, get_flashed_messages
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, UserMixin, current_user, login_user, logout_user, login_required
-from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy import desc
 
+<p>После идет создание экземпляров классов и настройка:</p>
 
-<p>Давайте допишем наш код:</p>
+<ul>
+	<li>app = Flask(__name__). Здесь мы создаем веб-приложение</li>
+	<li>login = LoginManager(app). LoginManager позволяет нам управлять логинами, осуществлять авторизацию и работать с текущим пользователем</li>
+	<li>Дальше мы задаем для менеджера авторизации, куда пересылать пользователя когда он будет заходить на страницу, которая доступна только авторизованным пользователем. О пути login мы поговорим ниже</li>
+	<li>Следующая строка задает параметр SQLALCHEMY_DATABASE_URI - это путь до базы данных</li>
+	<li>После мы также конфигурируем приложение, и задаем секретный ключ. Без этого ключа приложение не будет работать.</li>
+	<li>И в конце мы вызываем экземпляр класса SQLAlchemy.</li>
+</ul>
 
-<source>
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-	if current_user.is_authenticated:
-		return redirect(url_for('index'))
+<p>Теперь давайте создадим некоторые нужные нам функции - это загрузка пользователя и выход из аккаунта:</p>
+
+<ul>
+	<li>Первая функция - load_user, с декоратором @login.user_loader. Это функция загружает пользователя из БД по его ID</li>
+	<li>Вторая функция - logout. Это функция, которая вызывает функцию logout_user (выход из аккаунта) из flask_login, и после создает редирект на главную страницу.</li>
+</ul>
+
+<p>Настала очередь создать две модели для базы данных - это модель поста:</p>
+
+<ul>
+	<li>Мы создаем класс Post, наследуя его от базового класса db.Model</li>
+	<li>Мы задаем название таблицы, в нашем случае - posts</li>
+	<li>Мы записываем id - это будет целочисленное значение, которое будет автоматически задаваться, то есть будет проходить инкрементирование значения</li>
+	<li>Далее - title, заголовок. Это будет строковое значение с максимальной длиной 255 символов. Он должен быть обязательно (nullable).</li>
+	<li>После мы задаем параметр content - контента статьи. Он также обязательно должен быть (параметр nullable).</li>
+	<li>Предпоследнее значение - дата создания поста, дефолтное значение - это дата и время по UTC, когда был создан пост.</li>
+	<li>И последнее значение - это author, куда мы указываем ID автора (то есть ID текущего пользователя, current_user.id)</li>
+	<li>Осталась только магическая функция __repr__. Она позволяет преобразовывать произвольные объекты в строковое значение.</li>
+</ul>
+
+<p>И модель пользователя:</p>
+
+<ul>
+	<li>Кроме наследования db.Model, мы наследуем специальный класс UserMixin, чтобы работать с Flask Login.</li>
+	<li>Также, как и в модели поста мы создаем id, который автоматически увеличивается</li>
+	<li>Дальше мы задаем имя пользователя, максимальная длина - 63.</li>
+	<li>И в конце создание колонки хеша пароля - с максимальной длиной, нет, не 127, а 128 символов.</li>
+	<li>Теперь нам требуется создать две вспомогательные функции - set_password и check_password. Первая преобразует пароль в хеш, а вторая проверяет пароль, который подан на аргументы и пароль из бд. Здесь мы как раз и задействуем модуль werkzeug.</li>
+	<li>И мы также создаем магическую фунцию __repr__, как и в модели пользователя.</li>
+</ul>
+
+<p>Вот и первая часть кода позади. Мы создали уже основу, скелет приложения, но не хватает главного - самого функционала сайта, взаимодействия с БД.</p>
+
+<h2>Создание путей отображения</h2>
+
+<p>Итак, начнем c функции index. Главная функция, отображает корневой каталог сайта.</p>
+
+<source lang="python">
+@app.route('/')
+@app.route('/index')
+def index():
+	posts = Post.query.order_by(desc(Post.created_on)).all()
+
+	return render_template('index.html', posts=posts)
+</source>
+
+<p>В функции index мы задаем два пути отображения - / и /index. После мы создаем список постов, обращаемся к модели Post, и требуем выдать все посты, отсортированные по дате создания. После мы делаем рендер шаблона, и передаем список постов аргументов, чтобы потом использовать его.</p>
+
+<p>Давайте рассмотрим сам шаблон index.html и base.html. Сами шаблоны хранятся в директории templates. base.html - это базовый шаблон, от него наследуются уже все остальные. В нем мы задаем форму и создаем блоки. В общем, вот как выглядит он у меня:</p>
+
+<source lang='html'>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Open Wall</title>
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
 	
-	if request.method == 'POST':
-		user = db.session.query(User).filter(User.username == request.form['username']).first()
+	<div class="wrapper">
+		<div class="header">
+			<h1><a href="/" style='color: white; text-decoration: none;'>Open Wall - открытая публичная стена</a></h1>
+			<a href="https://github.com/AlexeevDeveloper/openwall">Репозиторий</a>
+			<a href="https://habr.com/ru/companies/timeweb/articles/812413/">Статья</a>
+			{% if not current_user.is_authenticated %}
+				<a href="/login">Войти</a>
+				<a href="/reg">Регистрация</a>
+			{% else %}
+				<a href="/new">Создать пост</a>
+			{% endif %}
+		</div>
 
-		if not user.check_password(request.form['password']):
-			flash('Пароль неверный')
-			return render_template('login.html')
+		<div class="content">
+			{% block content %}
+			{% endblock %}
+		</div>
 
-		if user is not None:
-			login_user(user)
-			return redirect(url_for('index'))
-		else:
-			flash('Пользователя не существует. Проверьте имя пользователя или пароль.')
+		<div class="footer">
+			<p>Все что останется здесь - останется навсегда. Добро пожаловать на Open Wall!</p>
+		</div>
+	</div>
 
-	return render_template('login.html')
+</body>
+</html>
+</source>
 
+<p>Думаю, вы знаете HTML, но некоторые моменты надо прояснить. Как мы уже говорили, фигурные скобки с процентами - для функций шаблонизатора Jinja, а просто двойные фигурные скобки - для переменных.</p>
 
-@app.route('/profile/<username>')
-def profile(username: str):
-	posts = db.session.query(Post).filter(Post.author == username).order_by(desc(Post.created_on)).all()
+<p>Итак, в head-блоке, в элементе link, где мы задаем CSS стили, можно увидеть строку {{ url_for('static', filename='css/style.css') }}. Чтобы нам вручную не вводить путь, мы задаем путь через url_for (функция из Flask). Здесь мы задаем путь до стилей, лежат они в директории static. Вторым аргументом мы задаем путь до файла - css/style.css</p>
 
-	return render_template('profile.html', username=username, posts=posts)
+<p>Если вы хотите увидеть стили (я не стал сюда их вставлять, ибо это заняло бы слишком много места) - то перейдите по <a href="https://github.com/AlexeevDeveloper/openwall/blob/main/static/css/style.css">ссылке</a>.</p>
 
+<p>Ниже мы видем конструкцию типа if-else, то есть условный оператор. Первой строкой мы узнаем, текущий пользователь авторизован или нет. Если нет, то мы выводим ссылки на вход и регистрацию, а иначе - одну ссылку на создание поста. В последней строке мы даем шаблонизатору понять, что конструкция закончилась</p>
 
+<p>И последнее - это блок контента. Чтобы мы могли наследовать и задавать контент, мы создадим блок, и в других шаблонах мы можем туда вписывать что нам нужно.</p>
+
+<p>Теперь рассмотрим файл index.html:</p>
+
+<source lang="html">
+{% extends 'base.html' %}
+
+{% block content %}
+	{% for post in posts %}
+			<div class="posts">
+				<div class="post">
+					<div class="header">
+						<h2>{{ post.title }}</h2>
+					</div>
+					<p>
+						{{ post.content }}
+					</p>
+					<hr>
+					<p><a href="/profile/{{ post.author }}">Автор: {{ post.author }}</a></p>
+					<p>Дата: {{ post.created_on }}</p>
+				</div>
+			</div>
+	{% endfor %}
+{% endblock %}
+</source>
+
+<ul>
+	<li>Командой extends 'base.html' мы говорим приложению наследовать наш базовый шаблон.</li>
+	<li>После мы редактируем блок content - добавляем в него список постов</li>
+	<li>Дальше, в самом блоке контента, мы создаем цикл, и проходимся по всем элементам в списке posts (который мы передали в функции) и выводим: заголовок, контент, ссылку на профиль автора (рассмотрим позже) и дату создания поста.</li>
+	<li>В конце мы обозначаем, что завершили цикл и блок.</li>
+</ul>
+
+<img src="https://habrastorage.org/webt/_k/mq/dr/_kmqdr-mbz_bgsr1aott1a8hlbi.png" alt="">
+
+<p>Теперь займемся функцией регистрации:</p>
+
+<source lang='python'>
 @app.route('/reg', methods=['GET', 'POST'])
 def reg():
 	if current_user.is_authenticated:
@@ -203,6 +318,10 @@ def reg():
 
 		if password != password2:
 			flash('Пароли не совпадают')
+			return render_template('reg.html')
+
+		if len(username) > 63:
+			flash('Длина имени пользователя не должна быть больше 63 символов')
 			return render_template('reg.html')
 
 		try:
@@ -218,16 +337,160 @@ def reg():
 			return redirect('index')
 
 	return render_template('reg.html')
+</source>
 
+<p>Мы задаем путь отображения - это /reg. Также мы добавляем в декораторе параметр METHODS, который определяет принимаемые запросы - GET и POST.</p>
 
-@app.route('/')
-@app.route('/index')
-def index():
-	posts = Post.query.order_by(desc(Post.created_on)).all()
+<p>После мы проверяем, авторизован ли пользователь. Если да, то отправляем его на главную страницу.</p>
 
-	return render_template('index.html', posts=posts)
+<p>Следующий проверяет метод запроса - если это POST, то есть отправка данных, то мы начинаем регистрацию. Мы получаем username, пароль и повторение пароля из формы, проверяем пароли, проверяем длину имени пользователя и после мы создаем нового пользователя, автоматически его авторизуя в системе. При успешной регистрации перенаправляем на главную страницу, а при провале или при GET-запросе - рендерим шаблон reg.html:</p>
 
+{% extends 'base.html' %}
 
+{% block content %}
+	<h2>Регистрация</h2>
+
+	<form method="POST">
+
+		{% for msg in get_flashed_messages() %}
+			<div class="error">
+				<p>{{ msg }}</p>
+			</div>
+		{% endfor %}
+
+		<p>Введите имя пользователя:</p>
+		<input type="text" name='username' placeholder="Имя пользователя"><br>
+		<p>Введите пароль:</p>
+		<input type="password" name='password' placeholder="Пароль"><br>
+		<p>Повторите пароль:</p>
+		<input type="password" name='password2' placeholder="Повторите пароль"><br>
+		<br>
+		<input type="submit" class='btn'>
+		<br>
+	</form>
+{% endblock %}
+
+<p>В это шаблоне мы также используем функцию get_flashed_messages для отображения flash-сообщений.</p>
+
+<img src="https://habrastorage.org/webt/z3/i4/gs/z3i4gse59ginfke1vxxufeawvau.png" alt="">
+
+<img src="https://habrastorage.org/webt/cp/4t/xa/cp4txasrclnjxcq21zn75wpdfko.png" alt="">
+
+<p>Следующим шагом мы создадим функцию логина пользователя:</p>
+
+<source lang='python'>
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+	if current_user.is_authenticated:
+		return redirect(url_for('index'))
+	
+	if request.method == 'POST':
+		user = db.session.query(User).filter(User.username == request.form['username']).first()
+
+		if user is not None:
+			if not user.check_password(request.form['password']):
+				flash('Пароль неверный')
+				return render_template('login.html')
+
+			login_user(user)
+			return redirect(url_for('index'))
+		else:
+			flash('Пользователя не существует. Проверьте имя пользователя или пароль.')
+
+	return render_template('login.html')
+</source>
+
+<p>Также мы задаем типы методов, и также проверяем авторизован ли уже пользователь.</p>
+
+<p>После мы проверяем, существует ли пользователь с таким именем в системе. Если он существует, то мы проверяем хеш паролей (если пароль неверный, выводим об этом сообщение). Если хеши совпали, то можно авторизовать пользователя и перевести его на главную страницу.</p>
+
+<p>Шаблон страницы логина:</p>
+
+<source lang="html">
+{% extends 'base.html' %}
+
+{% block content %}
+	<h2>Вход в аккаунт</h2>
+
+	<form method="POST">
+
+		{% for msg in get_flashed_messages() %}
+			<div class="error">
+				<p>{{ msg }}</p>
+			</div>
+		{% endfor %}
+
+		<p>Введите имя пользователя:</p>
+		<input type="text" name='username' placeholder="Имя пользователя"><br>
+		<p>Введите пароль:</p>
+		<input type="password" name='password' placeholder="Пароль"><br>
+		<br>
+		<input type="submit" class='btn'>
+		<br>
+	</form>
+{% endblock %}
+</source>
+
+<p>Все практически также, как и при регистрации. Разве что без повторного ввода пароля.</p>
+
+<img src="https://habrastorage.org/webt/au/mx/kr/aumxkrznz4nfouuhpkfhbwbb9oe.png" alt="">
+
+<p>Теперь давайте немного отдохнем, напишем несложную функцию отображения профиля:</p>
+
+<source lang="python">
+@app.route('/profile/<username>')
+def profile(username: str):
+	user = db.session.query(User).filter(User.username == username.first()
+
+	if user is None:
+		return redirect('index')
+
+	posts = db.session.query(Post).filter(Post.author == username).order_by(desc(Post.created_on)).all()
+
+	return render_template('profile.html', username=username, posts=posts)
+</source>
+
+<p>В пути вы могли увидеть после второго слеша слово username. Это специальный аргумент, который будет означать произвольное слово после /profile/. В данном случае - пользователя. Этот аргумент также есть в функции.</p>
+
+<p>Также, как и при логине мы проверяем, существует ли пользователь. Если нет, то делаем редирект на главную страницу. Если пользователь существует, мы собираем все посты данного пользователя и сортируем по дате, и после передаем username и posts в функциюю render_template. А вот сам шаблон профиля:</p>
+
+<source lang="html">
+{% extends 'base.html' %}
+
+{% block content %}
+	<h2>Пользователь: {{ username }}</h2>
+	{% if current_user.username == username %}
+		<a href="/logout">Выйти из аккаунта</a>
+	{% endif %}
+	<h3 style='text-align: center;'>Посты</h3>
+	{% for post in posts %}
+		{% if post.author == username %}
+			<div class="posts">
+				<div class="post">
+					<div class="header">
+						<h2>{{ post.title }}</h2>
+					</div>
+					<p>
+						{{ post.content }}
+					</p>
+					<hr>
+					<p>Дата: {{ post.created_on }}</p>
+				</div>
+			</div>
+		{% endif %}
+	{% endfor %}
+{% endblock %}
+<source>
+
+<p>Здесь я добавил небольшую фичу - если пользователь перешел на страницу своего же аккаунта, то мы добавляем ссылку для выхода из профиля.</p>
+
+<img src="https://habrastorage.org/webt/n5/qw/am/n5qwamqa9ljjt6bztcata24bwgs.png" alt="">
+
+<img src="https://habrastorage.org/webt/ap/b3/9o/apb39oad8s86lvfbwhws9p4ibrc.png" alt="">
+
+<p>И наконец-то последняя функция - функция создания нового поста.</p>
+
+<source lang="python">
 @login_required
 @app.route('/new', methods=['GET', 'POST'])
 def new_post():
@@ -238,18 +501,95 @@ def new_post():
 		title = request.form['title']
 		content =  request.form['content']
 
-		if len(title) > 0 and len(content) > 0:
+		if len(title) > 0 and len(title) < 256 and len(content) > 0:
 			post = Post(title=title, content=content, author=current_user.username)
-			db.session.add(post)
-			db.session.commit()
-			return redirect('index')
+			
+			try:
+				db.session.add(post)
+				db.session.commit()
+			except Exception as e:
+				flash(f'Вознилка ошибка при записи в базу данных: {e}')
+			else:
+				return redirect('index')
 		else:
+			flash('Ошибка, длина заголовка поста не соответствует стандартам. Максимальное количество символов заголовка - 255.')
 			return render_template('newpost.html')
 
 	return render_template('newpost.html')
+</source>
+
+<p>Здесь как раз мы и используем декоратор login_required. И также мы, на случай обхода этого декоратора, создаем условие на проверку, авторизован ли пользователь. Если нет - то посылаем его на страницу логина.</p>
+
+<p>Потом мы также, как и при регистрации, если метод POST получаем заголовок и контент поста, проверяем его на размер, создаем новую модель и отправляем его в БД.</p>
+
+<p>Вот шаблон newpost.html:</p>
+
+<source lang="html">
+{% extends 'base.html' %}
+
+{% block content %}
+	<h2>Создание статьи</h2>
+
+	<form method="POST">
+		{% for msg in get_flashed_messages() %}
+			<div class="error">
+				<p>{{ msg }}</p>
+			</div>
+		{% endfor %}
+
+		<p>Введите заголовок статьи</p>
+		<input type="text" name='title' placeholder="Заголовок"><br>
+		<p>Введите текст статьи</p>
+		<textarea name="content" id=""></textarea>
+		<br>
+		<input type="submit" class='btn'>
+		<br>
+	</form>
+{% endblock %}
+</source>
+
+<h2>Финальные приготовления</h2>
+
+<p>В файл app.py (главный файл приложения), в самый конец, прописываем специальный условный оператор:</p>
+
+<source lang="python">
+if __name__ == '__main__':
+	app.run(debug=True, port=5000)
+</source>
+
+<p>Если программа запускается напрямую (не импортируется), то мы запускаем приложение с включенным дебагом и портом на 5000.</p>
+
+<p>После мы создаем файл create_db.py, который будет создавать файл базы данных:</p>
+
+<source lang="python">
+from app import app, db
+
+with app.app_context():
+	db.create_all()
+</source>
+
+<p>Мы импортируем app и db из файла приложения (app) и при помощи контекстного менеджера with вызываем метод create_all из db.</p>
+
+<p>И давайте создадим последний файл - main.py, он и будет запускать наш сервер, именно через него gunicorn (специальный модуль для запуска фласк-приложения на сервере) будет запускать нашу стену:</p>
+
+<source lang="python">
+from app import app
 
 
 if __name__ == '__main__':
-	app.run(debug=True, port=5000)
-
+	app.run(debug=False)
 </source>
+
+<p>И наконец то создадим небольшой bash-скрипт deploy.sh, для деплоя на сервер без лишних телодвижений</p>
+
+<source lang="bash">
+#!/bin/bash
+
+pip3 install -r requirements.txt
+
+python3 create_db.py
+
+echo "END"
+</source>
+
+<p>Здесь мы устанавливаем зависимости</p>
