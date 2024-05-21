@@ -9,7 +9,7 @@ app = Flask(__name__)
 login = LoginManager(app)
 login.login_view = 'login'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///wall.db'
-app.config['SECRET_KEY'] = 'fc186fd3-3ace-46c8-8031-a819ec7d9a0e'
+app.config['SECRET_KEY'] = 'секретный ключ'
 db = SQLAlchemy(app)
 
 
